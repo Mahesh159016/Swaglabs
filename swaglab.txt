@@ -1,0 +1,92 @@
+import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Playwright;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class AddToCartTests {
+
+    private static Playwright playwright;
+    private static Browser browser;
+    private static Page page;
+
+    @BeforeAll
+    public static void setUp() {
+        playwright = Playwright.create();
+        browser = playwright.firefox().launch();
+        BrowserContext context = browser.newContext();
+        page = context.newPage();
+    }
+
+    @Test
+    public void testAddToCartButtonExists() {
+        page.navigate("https://www.swaglabs.com/product-page"); // Assume Url
+        assertTrue(page.isVisible("text=Add to Cart"));
+    }
+
+    @Test
+    public void testAddItemToCart() {
+        page.navigate("https://www.swaglabs.com/product-page");
+        page.click("text=Add to Cart");
+        page.waitForNavigation();
+        page.navigate("https://www.swaglabs.com/cart");
+        assertTrue(page.isVisible("text=Added to Cart"));
+    }
+
+    @Test
+    public void testCartItemCountIncremented() {
+        page.navigate("https://www.swaglabs.com/product-page");
+        int initialItemCount = Integer.parseInt(page.innerText(".cart-item-count"));
+        page.click("text=Add to Cart");
+        page.waitForNavigation();
+        page.navigate("https://www.swaglabs.com/cart");
+        int updatedItemCount = Integer.parseInt(page.innerText(".cart-item-count"));
+        assertEquals(initialItemCount + 1, updatedItemCount);
+    }
+
+    @Test
+    public void testAddMultipleItemsToCart() {
+        page.navigate("https://www.swaglabs.com/product-page");
+        page.click("text=Add to Cart");
+        page.waitForNavigation();
+        page.click("text=Add to Cart");
+        page.waitForNavigation();
+        page.navigate("https://www.swaglabs.com/cart");
+        assertEquals(2, page.$$eval(".cart-item", elements -> elements.size()));
+    }
+
+    @Test
+    public void testCartTotalAmountUpdated() {
+        page.navigate("https://www.swaglabs.com/product-page");
+        String initialTotalAmount = page.innerText(".cart-total-amount");
+        page.click("text=Add to Cart");
+        page.waitForNavigation();
+        page.navigate("https://www.swaglabs.com/cart");
+        String updatedTotalAmount = page.innerText(".cart-total-amount");
+        // Assuming the total amount is updated correctly after adding an item
+        assertTrue(!initialTotalAmount.equals(updatedTotalAmount));
+    }
+
+    @Test
+    public void testEmptyCartAfterRemoval() {
+        page.navigate("https://www.swaglabs.com/product-page");
+        page.click("text=Add to Cart");
+        page.waitForNavigation();
+        page.navigate("https://www.swaglabs.com/cart");
+        page.click("text=Remove");
+        page.waitForNavigation();
+        assertEquals(0, page.$$eval(".cart-item", elements -> elements.size()));
+    }
+
+    @AfterAll
+    public static void tearDown() {
+        browser.close();
+        playwright.close();
+    }
+}
